@@ -5,6 +5,7 @@ import SpeechRecognition, {
   useSpeechRecognition,
 } from "react-speech-recognition"; // react-speech-recognition 라이브러리 추가
 import { scripts } from "../../data/scripts";
+import { train_voice } from "../../lib/api";
 
 const StyledAudio = styled.div`
   position: relative;
@@ -31,20 +32,6 @@ const StyledAudio = styled.div`
       top: 60%;
       transform: translateX(-50%);
     }
-    /* .audio-recorder {
-      position: absolute;
-      left: 20%;
-      top: 40%;
-      transform: translateX(-50%) translateY(-50%);
-      width: 90px;
-      height: 90px;
-    }
-    .audio-recorder-mic {
-      width: 70px;
-      height: 70px;
-      background-color: rgb(222, 222, 222);
-      padding: 10px;
-    } */
   }
 
   .stage {
@@ -57,7 +44,7 @@ const StyledAudio = styled.div`
       height: 55.6px;
     }
     img:active {
-      transform: scale(0.9); /* 버튼을 작게 축소하는 효과를 줍니다. */
+      transform: scale(0.9);
     }
   }
 `;
@@ -73,20 +60,12 @@ const AudioRecord = ({
   const { transcript, resetTranscript } = useSpeechRecognition();
   const [audioFile, setAudioFile] = useState<File>();
 
-  const addAudio = (blob: Blob | undefined) => {
-    // const url = URL.createObjectURL(blob);
-    // const audio = document.createElement("audio");
-    // audio.src = url;
-    // audio.controls = true;
-    // document.body.appendChild(audio);
-
+  const recordAudio = (blob: Blob | undefined) => {
     const fileName = "recorded_audio" + stage + ".wav";
 
     if (blob) {
       console.log("create file");
-      //   const audioFile = blobToFile({ blob, fileName });
       setAudioFile(blobToFile({ blob, fileName }));
-      //   setRecordedAudios((prevAudios) => [...prevAudios, audioFile]);
     }
   };
 
@@ -104,7 +83,6 @@ const AudioRecord = ({
     return file;
   };
 
-  // => 문제 : 말하다가 쉬면 그 다음 문장이 인식이 안됨...
   const startChecking = (): void => {
     // 녹음 시작
     recorderControls.startRecording();
@@ -112,27 +90,27 @@ const AudioRecord = ({
     // STT 시작
     resetTranscript(); // 이전 텍스트 초기화
     SpeechRecognition.startListening(); // 음성 인식 시작
+  };
 
-    // //일정 시간 후에 음성 인식 결과를 확인하고 필요한 작업 수행
-    // setTimeout(() => {
-    //   setSttText(transcript);
-    //   console.log("음성 인식 결과:", sttText);
-
-    //   // result에는 음성을 텍스트로 변환한 결과가 포함됩니다.
-    //   // 이 결과를 필요에 따라 처리할 수 있습니다.
-    // }, 5000); // 5초 후에 결과 확인 (원하는 시간으로 조절 가능)
+  const stopChecking = (): void => {
+    // STT 끝
+    SpeechRecognition.stopListening();
+    // 녹음 끝
+    recorderControls.stopRecording();
+    console.log("transcript : ", transcript);
+    if (!compareTexts(transcript)) {
+      alert(
+        "정확한 발음으로 따라해주세요. 사용자의 음성 추출을 위해 중요한 과정이랍니다~"
+      );
+      alert("추출 결과 : " + transcript);
+    }
   };
 
   // 두 문자열을 전처리하여 띄어쓰기와 문장 부호를 제거한 후 비교
-  function compareTexts({
-    transcript,
-    actualText,
-  }: {
-    transcript: string;
-    actualText: string;
-  }) {
+  function compareTexts(transcript: string) {
     // 띄어쓰기와 문장 부호를 제거하고 모든 문자를 소문자로 변환
     const cleanSttText = transcript.replace(/[\s.,!?]/g, "").toLowerCase();
+    const actualText = scripts[stage - 1];
     const cleanActualText = actualText.replace(/[\s.,!?]/g, "").toLowerCase();
     console.log("stt : ", cleanSttText);
     console.log("actual : ", cleanActualText);
@@ -140,80 +118,59 @@ const AudioRecord = ({
     return cleanSttText === cleanActualText;
   }
 
-  const stopChecking = (): void => {
-    // STT 끝
-    SpeechRecognition.stopListening();
-    // 녹음 끝
-    recorderControls.stopRecording();
-
-    const actualText = scripts[stage];
-    console.log("transcript : ", transcript);
-    if (compareTexts({ transcript, actualText })) {
-      // 파일 저장
-      console.log("blob : ", recorderControls.recordingBlob);
-      addAudio(recorderControls.recordingBlob);
-    } else {
-      alert(
-        "정확한 발음으로 따라해주세요. 사용자의 음성 추출을 위해 중요한 과정이랍니다~"
-      );
-      console.log("original : ", actualText);
-      console.log("train : ", transcript);
-    }
-  };
-
-  //   useEffect(() => {
-  //     if (recorderControls.isRecording) {
-  //       startChecking();
-  //     } else {
-  //       stopChecking();
-  //     }
-  //   }, [recorderControls.isRecording]);
-
-  const handleNextClick = () => {
-    console.log(stage);
-    if (stage < 9 && audioFile) {
-      console.log("add audio");
-      setRecordedAudios((prevAudios) => [...prevAudios, audioFile]);
+  const handleNextClick = async () => {
+    console.log("stage : " + stage);
+    if (compareTexts(transcript)) {
+      await addAudio();
       setStage(stage + 1);
       setAudioFile(undefined);
-    } else if (stage === 9) {
-      console.log("Submitting recorded audios to the server:", recordedAudios);
     }
     console.log("recorded audios : ", recordedAudios);
+  };
+  const submitFiles = async () => {
+    await addAudio();
+    const formData = new FormData();
+    console.log("recordedAudios len : " + recordedAudios.length);
+    recordedAudios.forEach((file) => {
+      // 파일 데이터 저장
+      formData.append("voiceFiles", file);
+    });
+
+    train_voice(formData);
+  };
+
+  const addAudio = async () => {
+    console.log("add audio");
+    if (audioFile) {
+      await setRecordedAudios((prevAudios) => [...prevAudios, audioFile]);
+    }
   };
 
   return (
     <StyledAudio>
       <div className="record-detail">
         <AudioRecorder
-          onRecordingComplete={(blob) => addAudio(blob)}
+          onRecordingComplete={(blob) => recordAudio(blob)}
           recorderControls={recorderControls}
         />
       </div>
       {recorderControls.isRecording ? (
         <div className="record" onClick={() => stopChecking()}>
           <img className="mic-img" src="/icon/stop.png" alt="stop"></img>
-          {/* <div className="record-detail">
-            <AudioRecorder
-              onRecordingComplete={(blob) => addAudio(blob)}
-              recorderControls={recorderControls}
-            />
-          </div> */}
         </div>
       ) : (
         <div className="record" onClick={() => startChecking()}>
           <img className="mic-img" src="/icon/mic.png" alt="mic"></img>
         </div>
       )}
-
-      {transcript}
-      {/* <button onClick={recorderControls.stopRecording}>Stop recording</button> */}
-      {stage < 9 ? (
+      <div>{transcript}</div>
+      {recordedAudios.length}
+      {stage < 10 ? (
         <div className="stage" onClick={handleNextClick}>
           <img src="/icon/next.png" alt="next"></img>
         </div>
       ) : (
-        <div className="stage">
+        <div className="stage" onClick={submitFiles}>
           <img src="/icon/submit.png" alt="next"></img>
         </div>
       )}

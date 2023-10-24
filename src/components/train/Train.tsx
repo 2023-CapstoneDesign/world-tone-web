@@ -8,7 +8,7 @@ const StyledTrain = styled.div`
 `;
 
 const Train = () => {
-  const [stage, setStage] = useState(0);
+  const [stage, setStage] = useState(1);
 
   return (
     <StyledTrain>
