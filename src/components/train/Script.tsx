@@ -41,8 +41,12 @@ const Script = ({ stage }: { stage: number }) => {
   return (
     <StyledScript>
       <div className="info">
-        <div className="stage"> STAGE{stage}</div>
-        <span> 아래의 문장을 읽어주세요.</span>
+        {stage < 11 && (
+          <>
+            <div className="stage"> STAGE{stage}</div>
+            <span> 아래의 문장을 읽어주세요.</span>
+          </>
+        )}
       </div>
       <div className="script">
         <span>{scripts[stage - 1]}</span>
