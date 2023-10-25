@@ -128,7 +128,6 @@ const AudioRecord = ({
     console.log("recorded audios : ", recordedAudios);
   };
   const submitFiles = async () => {
-    await addAudio();
     const formData = new FormData();
     console.log("recordedAudios len : " + recordedAudios.length);
     recordedAudios.forEach((file) => {
@@ -144,6 +143,7 @@ const AudioRecord = ({
     if (audioFile) {
       await setRecordedAudios((prevAudios) => [...prevAudios, audioFile]);
     }
+    console.log("recordidAudios in addAudio : ", recordedAudios);
   };
 
   return (
@@ -154,23 +154,26 @@ const AudioRecord = ({
           recorderControls={recorderControls}
         />
       </div>
-      {recorderControls.isRecording ? (
-        <div className="record" onClick={() => stopChecking()}>
-          <img className="mic-img" src="/icon/stop.png" alt="stop"></img>
-        </div>
-      ) : (
-        <div className="record" onClick={() => startChecking()}>
-          <img className="mic-img" src="/icon/mic.png" alt="mic"></img>
-        </div>
-      )}
+
       <div>{transcript}</div>
       {recordedAudios.length}
-      {stage < 10 ? (
-        <div className="stage" onClick={handleNextClick}>
-          <img src="/icon/next.png" alt="next"></img>
-        </div>
+      {stage < 11 ? (
+        <>
+          {recorderControls.isRecording ? (
+            <div className="record" onClick={() => stopChecking()}>
+              <img className="mic-img" src="/icon/stop.png" alt="stop"></img>
+            </div>
+          ) : (
+            <div className="record" onClick={() => startChecking()}>
+              <img className="mic-img" src="/icon/mic.png" alt="mic"></img>
+            </div>
+          )}
+          <div className="stage" onClick={() => handleNextClick()}>
+            <img src="/icon/next.png" alt="next"></img>
+          </div>
+        </>
       ) : (
-        <div className="stage" onClick={submitFiles}>
+        <div className="stage" onClick={() => submitFiles()}>
           <img src="/icon/submit.png" alt="next"></img>
         </div>
       )}
