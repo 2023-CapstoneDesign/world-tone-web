@@ -4,6 +4,7 @@ import { RouterProvider, createBrowserRouter } from "react-router-dom";
 import MainPage from "./pages/MainPage";
 import CreateDubPage from "./pages/CreateDubPage";
 import TrainPage from "./pages/TrainPage";
+import LoginPage from "./pages/LoginPage";
 
 const root = ReactDOM.createRoot(
   document.getElementById("root") as HTMLElement
@@ -22,6 +23,10 @@ const router = createBrowserRouter([
   {
     path: "/train",
     element: <TrainPage />,
+  },
+  {
+    path: "/auth/login",
+    element: <LoginPage />,
   },
 ]);
 

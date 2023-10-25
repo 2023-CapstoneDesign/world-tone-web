@@ -86,10 +86,10 @@ function Header(props: HeaderProps) {
           </Link>
         </div>
         <div className="account">
-          <Link to="/login" className="nav">
+          <Link to="/auth/login" className="nav">
             <span>Login</span>
           </Link>
-          <Link to="/join" className="nav">
+          <Link to="/auth/join" className="nav">
             <span>Join</span>
           </Link>
         </div>
