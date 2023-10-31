@@ -155,8 +155,8 @@ const AudioRecord = ({
         />
       </div>
 
-      <div>{transcript}</div>
-      {recordedAudios.length}
+      {/* <div>{transcript}</div>
+      {recordedAudios.length} */}
       {stage < 11 ? (
         <>
           {recorderControls.isRecording ? (
