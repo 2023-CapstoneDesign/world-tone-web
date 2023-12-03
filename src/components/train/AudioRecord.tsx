@@ -1,11 +1,12 @@
-import React, { ReactNode, useEffect, useState } from "react";
-import { AudioRecorder, useAudioRecorder } from "react-audio-voice-recorder";
+import React, { useRef, useState } from "react";
 import styled from "styled-components";
 import SpeechRecognition, {
   useSpeechRecognition,
 } from "react-speech-recognition"; // react-speech-recognition 라이브러리 추가
 import { scripts } from "../../data/scripts";
 import { train_voice } from "../../lib/api";
+import { ReactMic, ReactMicStopEvent } from "react-mic";
+import { getMemberIdFromLocal } from "../../lib/auth";
 
 const StyledAudio = styled.div`
   position: relative;
@@ -56,53 +57,65 @@ const AudioRecord = ({
   setStage: React.Dispatch<React.SetStateAction<number>>;
 }) => {
   const [recordedAudios, setRecordedAudios] = useState<File[]>([]);
-  const recorderControls = useAudioRecorder();
-  const { transcript, resetTranscript } = useSpeechRecognition();
   const [audioFile, setAudioFile] = useState<File>();
+  const [isRecording, setIsRecording] = useState(false);
+  const { transcript, resetTranscript } = useSpeechRecognition();
+  const stageRef = useRef(stage);
 
-  const recordAudio = (blob: Blob | undefined) => {
-    const fileName = "recorded_audio" + stage + ".wav";
-
-    if (blob) {
-      console.log("create file");
-      setAudioFile(blobToFile({ blob, fileName }));
-    }
-  };
-
-  const blobToFile = ({
-    blob,
-    fileName,
-  }: {
-    blob: Blob;
-    fileName: string;
-  }): File => {
-    const file = new File([blob], fileName, {
-      type: blob.type,
-      lastModified: Date.now(),
-    });
-    return file;
-  };
+  stageRef.current = stage;
 
   const startChecking = (): void => {
-    // 녹음 시작
-    recorderControls.startRecording();
+    navigator.mediaDevices
+      .getUserMedia({ audio: true })
+      .then(function (stream) {
+        // 사용자가 권한을 부여했을 때 실행할 코드
+        console.log("마이크 액세스 권한이 부여되었습니다.");
+        // STT 시작
+        resetTranscript(); // 이전 텍스트 초기화
+        SpeechRecognition.startListening(); // 음성 인식 시작
 
-    // STT 시작
-    resetTranscript(); // 이전 텍스트 초기화
-    SpeechRecognition.startListening(); // 음성 인식 시작
+        // 녹음 시작
+        setIsRecording(true);
+      })
+      .catch(function (error) {
+        // 사용자가 권한을 거부했거나 오류가 발생한 경우 실행할 코드
+        console.error("마이크 액세스 권한을 얻을 수 없습니다.", error);
+      });
   };
 
   const stopChecking = (): void => {
     // STT 끝
     SpeechRecognition.stopListening();
+
     // 녹음 끝
-    recorderControls.stopRecording();
+    setIsRecording(false);
+
     console.log("transcript : ", transcript);
     if (!compareTexts(transcript)) {
       alert(
         "정확한 발음으로 따라해주세요. 사용자의 음성 추출을 위해 중요한 과정이랍니다~"
       );
       alert("추출 결과 : " + transcript);
+    }
+  };
+  const blobToFile = (blob: Blob, fileName: string): File => {
+    console.log(blob.type);
+    const file = new File([blob], fileName, {
+      type: blob.type,
+    });
+    console.log("file ; ", file);
+    // check file
+    const objectURL = URL.createObjectURL(file);
+    console.log("objectURL : ", objectURL);
+    return file;
+  };
+
+  const onStop = (recordedBlob: ReactMicStopEvent) => {
+    const currentStage = stageRef.current;
+    const fileName = "recorded_audio" + currentStage + ".webm";
+    const blob = recordedBlob.blob;
+    if (blob) {
+      setAudioFile(blobToFile(blob, fileName));
     }
   };
 
@@ -118,48 +131,56 @@ const AudioRecord = ({
     return cleanSttText === cleanActualText;
   }
 
-  const handleNextClick = async () => {
+  const handleNextClick = () => {
     console.log("stage : " + stage);
     if (compareTexts(transcript)) {
-      await addAudio();
+      addAudio();
       setStage(stage + 1);
       setAudioFile(undefined);
     }
     console.log("recorded audios : ", recordedAudios);
   };
-  const submitFiles = async () => {
-    const formData = new FormData();
-    console.log("recordedAudios len : " + recordedAudios.length);
-    recordedAudios.forEach((file) => {
-      // 파일 데이터 저장
-      formData.append("voiceFiles", file);
-    });
 
-    train_voice(formData);
-  };
-
-  const addAudio = async () => {
+  const addAudio = () => {
     console.log("add audio");
     if (audioFile) {
-      await setRecordedAudios((prevAudios) => [...prevAudios, audioFile]);
+      setRecordedAudios((prevAudios) => [...prevAudios, audioFile]);
     }
     console.log("recordidAudios in addAudio : ", recordedAudios);
   };
 
+  const submitFiles = async () => {
+    const formData = new FormData();
+    console.log("recordedAudios len : " + recordedAudios.length);
+    recordedAudios.forEach((file) => {
+      console.log("file : ", file);
+      // 파일 데이터 저장
+      formData.append("voiceFiles", file);
+    });
+    const loginUser = getMemberIdFromLocal();
+    if (loginUser === null) {
+      alert("로그인 후 사용해주세요.");
+      return;
+    }
+    train_voice(loginUser, formData);
+  };
   return (
     <StyledAudio>
+      {/* <Recorder /> */}
+
       <div className="record-detail">
-        <AudioRecorder
-          onRecordingComplete={(blob) => recordAudio(blob)}
-          recorderControls={recorderControls}
+        <ReactMic
+          record={isRecording}
+          className="sound-wave"
+          onStop={onStop}
+          strokeColor="#000000"
+          backgroundColor="#FF4081"
+          mimeType="audio/webm"
         />
       </div>
-
-      {/* <div>{transcript}</div>
-      {recordedAudios.length} */}
       {stage < 11 ? (
         <>
-          {recorderControls.isRecording ? (
+          {isRecording ? (
             <div className="record" onClick={() => stopChecking()}>
               <img className="mic-img" src="/icon/stop.png" alt="stop"></img>
             </div>
@@ -177,6 +198,15 @@ const AudioRecord = ({
           <img src="/icon/submit.png" alt="next"></img>
         </div>
       )}
+
+      {/* <div className="record-detail">
+        <AudioRecorder
+          onRecordingComplete={(blob) => recordAudio(blob)}
+          recorderControls={recorderControls}
+        />
+      </div> */}
+      {/* <div>{transcript}</div>
+      {recordedAudios.length} */}
     </StyledAudio>
   );
 };

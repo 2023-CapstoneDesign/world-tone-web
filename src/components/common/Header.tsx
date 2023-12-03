@@ -1,6 +1,8 @@
 import styled from "styled-components";
 import Wrapper from "./Wrapper";
 import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { getMemberIdFromLocal } from "../../lib/auth";
 const StyledHeader = styled.header<{ active: number }>`
   display: flex;
   flex-direction: row;
@@ -66,6 +68,17 @@ type HeaderProps = {
 };
 
 function Header(props: HeaderProps) {
+  const [isLoggedOut, setIsLoggedOut] = useState<boolean>(false);
+
+  const handleLogout = () => {
+    localStorage.removeItem("memberId");
+    setIsLoggedOut(true);
+  };
+
+  useEffect(() => {
+    setIsLoggedOut(false);
+  }, []);
+
   return (
     <Wrapper>
       <StyledHeader active={props.active}>
@@ -85,14 +98,22 @@ function Header(props: HeaderProps) {
             TRAIN
           </Link>
         </div>
-        <div className="account">
-          <Link to="/auth/login" className="nav">
-            <span>Login</span>
-          </Link>
-          <Link to="/auth/join" className="nav">
-            <span>Join</span>
-          </Link>
-        </div>
+        {getMemberIdFromLocal() === null ? (
+          <div className="account">
+            <Link to="/auth/login" className="nav">
+              <span>Login</span>
+            </Link>
+            <Link to="/auth/join" className="nav">
+              <span>Join</span>
+            </Link>
+          </div>
+        ) : (
+          <div className="account">
+            <Link to="/" className="nav" onClick={handleLogout}>
+              <span>Logout</span>
+            </Link>
+          </div>
+        )}
       </StyledHeader>
     </Wrapper>
   );

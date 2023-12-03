@@ -1,6 +1,8 @@
 import styled from "styled-components";
 import Wrapper from "../common/Wrapper";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { login } from "../../lib/api";
 const StyledAuth = styled.div`
   position: relative;
   height: 600px;
@@ -49,6 +51,30 @@ const StyledAuth = styled.div`
 `;
 
 const AuthForm = () => {
+  const navigate = useNavigate();
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+
+  const handleUsernameChange = (e: any) => {
+    setUsername(e.target.value);
+  };
+  const handlePasswordChange = (e: any) => {
+    setPassword(e.target.value);
+  };
+
+  const loginBtn = () => {
+    login(username, password)
+      .then((res) => {
+        console.log(res.data);
+        alert("로그인에 성공했습니다.");
+        localStorage.setItem("memberId", res.data);
+        navigate("/");
+      })
+      .catch((err) => {
+        console.error("Error:", err.response.data.message);
+        alert(err.response.data.message);
+      });
+  };
   return (
     <>
       <Wrapper>
@@ -60,23 +86,31 @@ const AuthForm = () => {
           </div>
           <div className="login">
             <div className="input">
-              <input className="field" type="text" placeholder="id"></input>
+              <input
+                className="field"
+                type="text"
+                placeholder="id"
+                onChange={handleUsernameChange}
+                value={username}
+              ></input>
             </div>
             <div className="input">
               <input
                 className="field"
                 type="password"
                 placeholder="password"
+                onChange={handlePasswordChange}
+                value={password}
               ></input>
             </div>
           </div>
           <div className="submit">
-            <div className="btn">
+            <div className="btn" onClick={loginBtn}>
               <img src="/icon/login.png" alt="login"></img>
             </div>
-            <div className="btn">
+            {/* <div className="btn">
               <img src="/icon/kakao.png" alt="login"></img>
-            </div>
+            </div> */}
           </div>
         </StyledAuth>
       </Wrapper>

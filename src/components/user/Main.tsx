@@ -4,6 +4,9 @@ import VoiceList from "./VoiceList";
 import styled from "styled-components";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSearch } from "@fortawesome/free-solid-svg-icons";
+import { dub_list } from "../../lib/api";
+import axios from "axios";
+import { getMemberIdFromLocal } from "../../lib/auth";
 
 const StyledMain = styled.div`
   position: relative;
@@ -21,26 +24,42 @@ export type Voice = {
   id: number;
   title: string;
   lang: string;
-  createdDate: string;
+  createdAt: string;
+  url: string;
 };
 const Main = () => {
   const [voices, setVoices] = useState<Voice[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>("");
 
-  const getVoiceList = () => {
+  const getVoiceList = async () => {
     // 음성 파일 목록 가져오는 코드
-    setVoices(initialData);
+    const loginUserId = getMemberIdFromLocal();
+
+    // 가져온 정보가 없을 경우
+    if (!loginUserId) {
+      return;
+    }
+    await dub_list(loginUserId)
+      .then((res) => {
+        console.log("res : ", res);
+        const voices: Voice[] = res.data.map((item: any) => ({
+          id: item.id || 0, // 예외 처리: id가 없을 경우 0으로 설정
+          title: item.title || "",
+          lang: item.language || "",
+          createdAt: item.createdAt.split("T")[0] || "",
+          url: item.uploadedFileName || "",
+        }));
+        setVoices(voices);
+      })
+      .catch((error) => {
+        console.error("Error : ", error);
+      });
+    //setVoices(initialData);
   };
 
   useEffect(() => {
     getVoiceList();
   }, []);
-
-  // 검색
-  const handleSearchQuery = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const query = e.target.value;
-    setSearchQuery(query);
-  };
 
   return (
     <StyledMain>

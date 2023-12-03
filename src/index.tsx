@@ -5,6 +5,7 @@ import MainPage from "./pages/MainPage";
 import CreateDubPage from "./pages/CreateDubPage";
 import TrainPage from "./pages/TrainPage";
 import LoginPage from "./pages/LoginPage";
+import JoinPage from "./pages/JoinPage";
 
 const root = ReactDOM.createRoot(
   document.getElementById("root") as HTMLElement
@@ -27,6 +28,10 @@ const router = createBrowserRouter([
   {
     path: "/auth/login",
     element: <LoginPage />,
+  },
+  {
+    path: "/auth/join",
+    element: <JoinPage />,
   },
 ]);
 
